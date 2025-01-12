@@ -1,0 +1,39 @@
+# iot_monitoring_tool/backend/app.py
+from fastapi import FastAPI
+import os
+import subprocess
+
+app = FastAPI()
+
+def scan_network():
+    """Scans the local network and returns a list of connected devices."""
+    try:
+        # Using arp-scan to detect devices in the local network (Linux-based example)
+        result = subprocess.run(
+            ["arp-scan", "--localnet", "--interface", "eth0"],
+            capture_output=True,
+            text=True
+        )
+        devices = []
+        for line in result.stdout.splitlines():
+            if line.startswith("192."):  # Simplified IP detection
+                parts = line.split()
+                devices.append({
+                    "ip": parts[0],
+                    "mac": parts[1],
+                    "manufacturer": " ".join(parts[2:])
+                })
+        return devices
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/devices")
+def get_devices():
+    """Endpoint to fetch the list of connected devices."""
+    devices = scan_network()
+    return {"devices": devices}
+
+# Entry point for testing locally
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
